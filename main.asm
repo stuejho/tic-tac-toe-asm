@@ -11,12 +11,16 @@
             o_name      equ "O"
             x_prompt    dw "X > ", 0
             o_prompt    dw "O > ", 0
-            x_dat       dw 0b1100_0011_0000_0000        ; track score, board placement
+            invalid_prompt dw "Invalid input, try again > ", 0
+            x_dat       dw 0b1100_0010_0000_0000        ; track score, board placement
             o_dat       dw 0b1100_0010_0000_0000        ; track score, board placement
             section     .bss
             BOARD_BFR   resb 14     ; store line to write, 13 characters plus null byte
+            INPUT_BFR   resb 2
+            INPUT_BFR_SIZE  equ 2
             section     .text
             global      _start
+            extern      print
             extern      print_line
             extern      print_newline
 _start:
@@ -31,6 +35,7 @@ _start:
 run_game:
             call print_board
             call get_input
+            call print_board
             ret
 
 ; PURPOSE:  Prints the current board to the console.
@@ -241,22 +246,72 @@ row_2_print:
             ret
 
 get_input:
+            push        ebp
+            mov         ebp, esp
+            sub         esp, 4          ; space to store address of current player
+
             ; determine player turn
-            mov         ax, [x_dat]
-            mov         bx, [o_dat]
-            shl         ax, 7          ; clear out 7 most-significant bits of eax
+            mov         ax, [x_dat]     ; load player data
+            mov         bx, [o_dat]     ; load player data
+            shl         ax, 7           ; clear out 7 most-significant bits of eax
             shr         ax, 7
-            shl         bx, 7          ; clear out 7 most-significant bits of ebx
+            shl         bx, 7           ; clear out 7 most-significant bits of ebx
             shr         bx, 7
-            xor         al, ah         ; parity(ax) = parity(ah ^ al)
-            xor         bl, bh         ; parity(bx) = parity(bh ^ bl)
-            add         al, bl         ; parity(al + bl) = player turn
-            jp          x_turn         ; even parity => X's turn
-o_turn:     push        o_prompt       ; odd parity => O's turn
+            xor         al, ah          ; parity(ax) = parity(ah ^ al)
+            xor         bl, bh          ; parity(bx) = parity(bh ^ bl)
+            add         al, bl          ; parity(al + bl) = player turn
+            jp          x_turn          ; even parity => X's turn
+o_turn:     mov         dword [ebp - 4], o_dat  ; address of player data
+            push        o_prompt        ; odd parity => O's turn
             jmp         proc_turn
-x_turn:     push        o_prompt
-proc_turn:  call        print_newline
-            call        print_line
-            add         esp, 4
-            
+x_turn:     mov         dword [ebp - 4], x_dat  ; address of player data
+            push        x_prompt
+            ; print player prompt
+proc_turn:  call        print
+            add         esp, 4          ; pushed a prompt, so "pop" it out
+            ; read input
+            mov         eax, SYS_READ
+            mov         ebx, STDIN
+            mov         ecx, INPUT_BFR
+            mov         edx, INPUT_BFR_SIZE
+            int         LINUX_SYSCALL
+            ; process input,
+            ; will shift an addend value N bits to the right,
+            ; storing this number in ecx
+            mov         al, [INPUT_BFR]     ; first character
+            mov         bl, [INPUT_BFR + 1] ; second character
+            ; row check
+chk_row_0:  cmp         al, row_0_name
+            jne         chk_row_1
+            xor         ecx, ecx            ; shift 0 bits 
+            jmp         chk_col_0
+chk_row_1:  cmp         al, row_1_name
+            jne         chk_row_2
+            mov         ecx, 3              ; shift 3 bits
+            jmp         chk_col_0
+chk_row_2:  cmp         al, row_2_name
+            push        invalid_prompt
+            jne         proc_turn           ; invalid input, so try again
+            mov         ecx, 6
+            ; column check
+chk_col_0:  cmp         bl, "1"
+            jne         chk_col_1
+            ; add         ecx, 0            ; no change necessary
+            jmp         shift_bits
+chk_col_1   cmp         bl, "2"
+            jne         chk_col_2
+            inc         ecx                 ; shift 1 more bit
+            jmp         shift_bits
+chk_col_2:  cmp         bl, "3"
+            push        invalid_prompt
+            jne         proc_turn           ; invalid input, so try again
+            add         ecx, 2              ; shift 2 more bits
+            ; now, ecx should have the number of bits to shift
+shift_bits: mov         edx, 1
+            shl         edx, cl
+            mov         eax, [ebp - 4]
+            or          [eax], edx
+
+end_input:  mov         esp, ebp
+            pop         ebp
             ret

@@ -1,4 +1,41 @@
             %include    "linux.asm"
+
+; PURPOSE:  Prints a given character string to STDOUT.
+; 
+; INPUT:    The address of the character string.
+;
+; RETURNS:  
+;
+; PROCESS:
+;   Registers used:
+;       eax - character count
+;       cl - current character
+;       edx - current character address
+            global      print
+            section     .data
+            section     .text
+            ST_STR_ADDR equ 8       ; parameter location on stack
+print:
+            ; prologue
+            push        ebp
+            mov         ebp, esp
+
+            mov         eax, [ebp + ST_STR_ADDR]
+            push        eax
+            call        count_chars ; count the number of characters
+            add         esp, 4      ; re-adjust stack pointer
+
+            ; print given string
+            mov         edx, eax    ; store output of count_chars in edx
+            mov         eax, SYS_WRITE
+            mov         ebx, STDOUT
+            mov         ecx, [ebp + ST_STR_ADDR]
+            int         LINUX_SYSCALL
+
+            ; epilogue
+            mov         esp, ebp
+            pop         ebp
+            ret
             
 ; PURPOSE:  Prints a given character string to STDOUT
 ;           with an additional newline character output.
