@@ -6,6 +6,7 @@
             SYS_WRITE   equ 4
             SYS_OPEN    equ 5
             SYS_CLOSE   equ 6
+            SYS_LSEEK   equ 19
             SYS_BRK     equ 45
 
             ; System Call Interrupt Number
@@ -15,6 +16,11 @@
             STDIN       equ 0
             STDOUT      equ 1
             STDERR      equ 2
+
+            ; lseek whence
+            SEEK_SET    equ 0
+            SEEK_CUR    equ 1
+            SEEK_END    equ 2
 
             ; Common Status Codes
             END_OF_FILE equ 0

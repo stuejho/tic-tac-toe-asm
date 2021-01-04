@@ -16,8 +16,8 @@
             o_dat       dw 0b1100_0010_0000_0000        ; track score, board placement
             section     .bss
             BOARD_BFR   resb 14     ; store line to write, 13 characters plus null byte
-            INPUT_BFR   resb 2
-            INPUT_BFR_SIZE  equ 2
+            INPUT_BFR   resb 3      ; 2 bytes to store character, 1 byte for newline
+            INPUT_BFR_SIZE  equ 3
             section     .text
             global      _start
             extern      print
