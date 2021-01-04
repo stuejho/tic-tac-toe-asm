@@ -7,21 +7,10 @@
             row_2_name  equ "c"
             space       equ " "
             bar         equ "|"
-            row_0_0     equ 0b00000001
-            row_0_1     equ 0b00000010
-            row_0_2     equ 0b00000100
-            row_1_0     equ 0b00001000
-            row_1_1     equ 0b00010000
-            row_1_2     equ 0b00100000
-            row_2_0     equ 0b01000000
-            row_2_1     equ 0b10000000
-            row_2_2     equ 0b00000001
             x_name      equ "X"
             o_name      equ "O"
-            x_pos       db 0        ; track board placement - TTT1-TTT8
-            o_pos       db 0        ; track board placement - TTT1-TTT8
-            x_score_pos db 0        ; upper 7 bits - x score, least-significant bit - TTT9
-            o_score_pos db 0        ; upper 7 bits - o score, least-significant bit - TTT9
+            x_dat       dw 0b0000_0001_1111_1001        ; track score, board placement
+            o_dat       dw 2        ; track score, board placement
             section     .bss
             BOARD_BFR   resb 14     ; store line to write, 13 characters plus null byte
             section     .text
@@ -42,314 +31,207 @@ run_game:
             call process_input
             ret
 
+; PURPOSE:  Prints the current board to the console.
+;
+; INPUT:    None.
+;
+; RETURNS:  Nothing.
+;
+; PROCESS:
+;   Registers used:
+;   eax:    x data
+;   ebx:    o data
+;   ecx:    loop counter
+;   edi:    destination index
+            LCL_X_DAT   equ 4
+            LCL_O_DAT   equ 8
 print_board:
             push        ebp
             mov         ebp, esp
 
-            ; local variable
-            sub         esp, 4
+            ; load in data for x and o
+            mov         eax, [x_dat]
+            mov         ebx, [o_dat]
+
+            ; save eax and ebx
+            push        ebx
+            push        eax
 
             ; column numbers
             push        c_numbers
             call        print_line
-            add         esp, 4 
+            add         esp, 4
+
+            ; restore eax and ebx
+            pop         eax
+            pop         ebx
            
             ; first row
+            mov         edi, BOARD_BFR  ; starting address of buffer
+            mov         ecx, 3          ; ecx = 3
+
             ; row name and first space
-            lea         eax, BOARD_BFR 
+            mov         byte [edi], row_0_name
+            inc         edi
+            mov         byte [edi], space
+            inc         edi
+row_0_loop: test        ecx, ecx        ; loop test, while ecx > 0
+            jz          row_0_end
+
+            ; [space]
+            mov         byte [edi], space
+            inc         edi
+
+            ; symbol
+row_0_x:    test        eax, 1          ; see if an x is placed
+            jz          row_0_o
+            mov         byte [edi], x_name
+            jmp         row_0_after
+row_0_o:    test        ebx, 1          ; see if an o is placed
+            jz          row_0_space 
+            mov         byte [edi], o_name
+            jmp         row_0_after
+row_0_space:mov         byte [edi], space
+row_0_after:shr         eax, 1          ; right shift eax and ebx one bit
+            shr         ebx, 1
+            inc         edi             ; increment counter
+
+            ; [space]
+            mov         byte [edi], space
+            inc         edi
+
+            ; [bar]
+            mov         byte [edi], bar 
+            inc         edi
+
+            dec         ecx
+            jmp         row_0_loop
+row_0_end:  mov         byte [edi - 1], 0  ; make last character a null byte 
+row_0_print:
+            ; save contents of eax and ebx
+            push        ebx
             push        eax
-            call        print_row_0
-            sub         esp, 4
+
+            ; print row 0
+            push        BOARD_BFR
+            call        print_line
+            add         esp, 4            
 
             ; first separator
             push        h_line
             call        print_line
             add         esp, 4
 
+            ; restore eax and ebx
+            pop         eax
+            pop         ebx
+
             ; second row
-            lea         eax, BOARD_BFR 
+            mov         edi, BOARD_BFR  ; starting address of buffer
+            mov         ecx, 3          ; ecx = 3
+
+            ; row name and first space
+            mov         byte [edi], row_1_name
+            inc         edi
+            mov         byte [edi], space
+            inc         edi
+row_1_loop: test        ecx, ecx        ; loop test, while ecx > 0
+            jz          row_1_end
+
+            ; [space]
+            mov         byte [edi], space
+            inc         edi
+
+            ; symbol
+row_1_x:    test        eax, 1          ; see if an x is placed
+            jz          row_1_o
+            mov         byte [edi], x_name
+            jmp         row_1_after
+row_1_o:    test        ebx, 1          ; see if an o is placed
+            jz          row_1_space 
+            mov         byte [edi], o_name
+            jmp         row_1_after
+row_1_space:mov         byte [edi], space
+row_1_after:shr         eax, 1          ; right shift eax and ebx one bit
+            shr         ebx, 1
+            inc         edi             ; increment counter
+
+            ; [space]
+            mov         byte [edi], space
+            inc         edi
+
+            ; [bar]
+            mov         byte [edi], bar 
+            inc         edi
+
+            dec         ecx
+            jmp         row_1_loop
+row_1_end:  mov         byte [edi - 1], 0  ; make last character a null byte 
+row_1_print:
+            ; save contents of eax and ebx
+            push        ebx
             push        eax
-            call        print_row_1
-            sub         esp, 4
+
+            ; print row 1
+            push        BOARD_BFR
+            call        print_line
+            add         esp, 4            
 
             ; second separator
             push        h_line
             call        print_line
             add         esp, 4
 
+            ; restore eax and ebx
+            pop         eax
+            pop         ebx
+
             ; third row
-            lea         eax, BOARD_BFR 
-            push        eax
-            call        print_row_2
-            sub         esp, 4
+            mov         edi, BOARD_BFR  ; starting address of buffer
+            mov         ecx, 3          ; ecx = 3
 
-            mov         esp, ebp
-            pop         ebp
-            ret
+            ; row name and first space
+            mov         byte [edi], row_2_name
+            inc         edi
+            mov         byte [edi], space
+            inc         edi
+row_2_loop: test        ecx, ecx        ; loop test, while ecx > 0
+            jz          row_2_end
 
-print_row_0:
-            push        ebp
-            mov         ebp, esp
-
-            mov         eax, [ebp + 8]
-
-            ; a 
-            mov         byte [eax], row_0_name 
-            inc         eax
             ; [space]
-            mov         byte [eax], space
-            inc         eax
+            mov         byte [edi], space
+            inc         edi
+
+            ; symbol
+row_2_x:    test        eax, 1          ; see if an x is placed
+            jz          row_2_o
+            mov         byte [edi], x_name
+            jmp         row_2_after
+row_2_o:    test        ebx, 1          ; see if an o is placed
+            jz          row_2_space 
+            mov         byte [edi], o_name
+            jmp         row_2_after
+row_2_space:mov         byte [edi], space
+row_2_after:shr         eax, 1          ; right shift eax and ebx one bit
+            shr         ebx, 1
+            inc         edi             ; increment counter
+
             ; [space]
-            mov         byte [eax], space
-            inc         eax
-            ; 0, 0
-chk_x_0_0:  mov         ebx, [x_pos]
-            test        ebx, row_0_0    ; see if x has placed a token here
-            jz          chk_o_0_0       ; not equal, so see if o
-            mov         byte [eax], x_name
-            jmp         finish_0_0
-chk_o_0_0:  mov         ebx, [o_pos]
-            test        ebx, row_0_0
-            jz          space_0_0
-            mov         byte [eax], o_name
-            jmp         finish_0_0
-space_0_0:  mov         byte [eax], space
-finish_0_0: inc         eax             ; increment for token placement
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
+            mov         byte [edi], space
+            inc         edi
+
             ; [bar]
-            mov         byte [eax], bar
-            inc         eax
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
-            ; 0, 1
-chk_x_0_1:  mov         ebx, [x_pos]
-            test        ebx, row_0_1    ; see if x has placed a token here
-            jz          chk_o_0_1       ; not equal, so see if o
-            mov         byte [eax], x_name
-            jmp         finish_0_1
-chk_o_0_1:  mov         ebx, [o_pos]
-            test        ebx, row_0_1
-            jz          space_0_1
-            mov         byte [eax], o_name
-            jmp         finish_0_1
-space_0_1:  mov         byte [eax], space
-finish_0_1: inc         eax             ; increment for token placement
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
-            ; [bar]
-            mov         byte [eax], bar
-            inc         eax
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
-            ; 0, 2
-chk_x_0_2:  mov         ebx, [x_pos]
-            test        ebx, row_0_2    ; see if x has placed a token here
-            jz          chk_o_0_2       ; not equal, so see if o
-            mov         byte [eax], x_name
-            jmp         finish_0_2
-chk_o_0_2:  mov         ebx, [o_pos]
-            test        ebx, row_0_2
-            jz          space_0_2
-            mov         byte [eax], o_name
-            jmp         finish_0_2
-space_0_2:  mov         byte [eax], space
-finish_0_2: inc         eax             ; increment for token placement
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
+            mov         byte [edi], bar 
+            inc         edi
 
-            ; null character
-            mov         byte [eax], 0
-
-            ; print
-            mov         eax, [ebp + 8]
-            push        eax
+            dec         ecx
+            jmp         row_2_loop
+row_2_end:  mov         byte [edi - 1], 0  ; make last character a null byte 
+row_2_print:
+            ; print row 3
+            push        BOARD_BFR
             call        print_line
-            add         esp, 4
-
-            mov         esp, ebp
-            pop         ebp
-            ret
-
-print_row_1:
-            push        ebp
-            mov         ebp, esp
-
-            mov         eax, [ebp + 8]
-
-            ; b  
-            mov         byte [eax], row_1_name 
-            inc         eax
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
-            ; 1, 0
-chk_x_1_0:  mov         ebx, [x_pos]
-            test        ebx, row_1_0    ; see if x has placed a token here
-            jz          chk_o_1_0       ; not equal, so see if o
-            mov         byte [eax], x_name
-            jmp         finish_1_0
-chk_o_1_0:  mov         ebx, [o_pos]
-            test        ebx, row_1_0
-            jz          space_1_0
-            mov         byte [eax], o_name
-            jmp         finish_1_0
-space_1_0:  mov         byte [eax], space
-finish_1_0: inc         eax             ; increment for token placement
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
-            ; [bar]
-            mov         byte [eax], bar
-            inc         eax
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
-            ; 1, 1
-chk_x_1_1:  mov         ebx, [x_pos]
-            test        ebx, row_1_1    ; see if x has placed a token here
-            jz          chk_o_1_1       ; not equal, so see if o
-            mov         byte [eax], x_name
-            jmp         finish_1_1
-chk_o_1_1:  mov         ebx, [o_pos]
-            test        ebx, row_1_1
-            jz          space_1_1
-            mov         byte [eax], o_name
-            jmp         finish_1_1
-space_1_1:  mov         byte [eax], space
-finish_1_1: inc         eax             ; increment for token placement
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
-            ; [bar]
-            mov         byte [eax], bar
-            inc         eax
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
-            ; 1, 2
-chk_x_1_2:  mov         ebx, [x_pos]
-            test        ebx, row_1_2    ; see if x has placed a token here
-            jz          chk_o_1_2       ; not equal, so see if o
-            mov         byte [eax], x_name
-            jmp         finish_1_2
-chk_o_1_2:  mov         ebx, [o_pos]
-            test        ebx, row_1_2
-            jz          space_1_2
-            mov         byte [eax], o_name
-            jmp         finish_1_2
-space_1_2:  mov         byte [eax], space
-finish_1_2: inc         eax             ; increment for token placement
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
-
-            ; null character
-            mov         byte [eax], 0
-
-            ; print
-            mov         eax, [ebp + 8]
-            push        eax
-            call        print_line
-            add         esp, 4
-
-            mov         esp, ebp
-            pop         ebp
-            ret
-
-
-print_row_2:
-            push        ebp
-            mov         ebp, esp
-
-            mov         eax, [ebp + 8]
-
-            ; c  
-            mov         byte [eax], row_2_name 
-            inc         eax
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
-            ; 2, 0
-chk_x_2_0:  mov         ebx, [x_pos]
-            test        ebx, row_2_0    ; see if x has placed a token here
-            jz          chk_o_2_0       ; not equal, so see if o
-            mov         byte [eax], x_name
-            jmp         finish_2_0
-chk_o_2_0:  mov         ebx, [o_pos]
-            test        ebx, row_2_0
-            jz          space_2_0
-            mov         byte [eax], o_name
-            jmp         finish_2_0
-space_2_0:  mov         byte [eax], space
-finish_2_0: inc         eax             ; increment for token placement
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
-            ; [bar]
-            mov         byte [eax], bar
-            inc         eax
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
-            ; 2, 1
-chk_x_2_1:  mov         ebx, [x_pos]
-            test        ebx, row_2_1    ; see if x has placed a token here
-            jz          chk_o_2_1       ; not equal, so see if o
-            mov         byte [eax], x_name
-            jmp         finish_2_1
-chk_o_2_1:  mov         ebx, [o_pos]
-            test        ebx, row_2_1
-            jz          space_2_1
-            mov         byte [eax], o_name
-            jmp         finish_2_1
-space_2_1:  mov         byte [eax], space
-finish_2_1: inc         eax             ; increment for token placement
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
-            ; [bar]
-            mov         byte [eax], bar
-            inc         eax
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
-            ; 2, 2
-chk_x_2_2:  mov         ebx, [x_score_pos] ; use extra bit
-            test        ebx, row_2_2    ; see if x has placed a token here
-            jz          chk_o_2_2       ; not equal, so see if o
-            mov         byte [eax], x_name
-            jmp         finish_2_2
-chk_o_2_2:  mov         ebx, [o_score_pos] ; extra bit
-            test        ebx, row_2_2
-            jz          space_2_2
-            mov         byte [eax], o_name
-            jmp         finish_2_2
-space_2_2:  mov         byte [eax], space
-finish_2_2: inc         eax             ; increment for token placement
-            ; [space]
-            mov         byte [eax], space
-            inc         eax
-
-            ; null character
-            mov         byte [eax], 0
-
-            ; print
-            mov         eax, [ebp + 8]
-            push        eax
-            call        print_line
-            add         esp, 4
+            add         esp, 4            
 
             mov         esp, ebp
             pop         ebp
