@@ -68,7 +68,6 @@ print_board:
             push        c_numbers
             call        print_line
             add         esp, 4
-            call        print_newline
 
             ; restore eax and ebx
             pop         eax
@@ -311,6 +310,8 @@ shift_bits: mov         edx, 1
             shl         edx, cl
             mov         eax, [ebp - 4]
             or          [eax], edx
+
+            call        print_newline
 
 end_input:  mov         esp, ebp
             pop         ebp
