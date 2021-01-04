@@ -7,19 +7,19 @@
             row_2_name  equ "c"
             space       equ " "
             bar         equ "|"
-            row_0_0     db 0b00000001
-            row_0_1     db 0b00000010
-            row_0_2     db 0b00000100
-            row_1_0     db 0b00001000
-            row_1_1     db 0b00010000
-            row_1_2     db 0b00100000
-            row_2_0     db 0b01000000
-            row_2_1     db 0b10000000
-            row_2_2     db 0b00000001
+            row_0_0     equ 0b00000001
+            row_0_1     equ 0b00000010
+            row_0_2     equ 0b00000100
+            row_1_0     equ 0b00001000
+            row_1_1     equ 0b00010000
+            row_1_2     equ 0b00100000
+            row_2_0     equ 0b01000000
+            row_2_1     equ 0b10000000
+            row_2_2     equ 0b00000001
             x_name      equ "X"
             o_name      equ "O"
-            x_pos       db 0        ; track board placement - TTT1-TTT8
-            o_pos       db 0        ; track board placement - TTT1-TTT8
+            x_pos       db 0b00000000        ; track board placement - TTT1-TTT8
+            o_pos       db 0b00000000        ; track board placement - TTT1-TTT8
             x_score_pos db 0        ; upper 7 bits - x score, least-significant bit - TTT9
             o_score_pos db 0        ; upper 7 bits - o score, least-significant bit - TTT9
             section     .bss
@@ -93,14 +93,14 @@ print_row_0:
             mov         byte [eax], space
             inc         eax
             ; 0, 0
-chk_x_0_0:  mov         ebx, x_pos
+chk_x_0_0:  mov         ebx, [x_pos]
             test        ebx, row_0_0    ; see if x has placed a token here
-            jnz         chk_o_0_0       ; not equal, so see if o
+            jz          chk_o_0_0       ; not equal, so see if o
             mov         byte [eax], x_name
             jmp         finish_0_0
-chk_o_0_0:  mov         ebx, o_pos
+chk_o_0_0:  mov         ebx, [o_pos]
             test        ebx, row_0_0
-            jnz         space_0_0
+            jz          space_0_0
             mov         byte [eax], o_name
             jmp         finish_0_0
 space_0_0:  mov         byte [eax], space
@@ -115,14 +115,14 @@ finish_0_0: inc         eax             ; increment for token placement
             mov         byte [eax], space
             inc         eax
             ; 0, 1
-chk_x_0_1:  mov         ebx, x_pos
+chk_x_0_1:  mov         ebx, [x_pos]
             test        ebx, row_0_1    ; see if x has placed a token here
-            jnz         chk_o_0_1       ; not equal, so see if o
+            jz          chk_o_0_1       ; not equal, so see if o
             mov         byte [eax], x_name
             jmp         finish_0_1
-chk_o_0_1:  mov         ebx, o_pos
+chk_o_0_1:  mov         ebx, [o_pos]
             test        ebx, row_0_1
-            jnz         space_0_1
+            jz          space_0_1
             mov         byte [eax], o_name
             jmp         finish_0_1
 space_0_1:  mov         byte [eax], space
@@ -137,14 +137,14 @@ finish_0_1: inc         eax             ; increment for token placement
             mov         byte [eax], space
             inc         eax
             ; 0, 2
-chk_x_0_2:  mov         ebx, x_pos
+chk_x_0_2:  mov         ebx, [x_pos]
             test        ebx, row_0_2    ; see if x has placed a token here
-            jnz         chk_o_0_2       ; not equal, so see if o
+            jz          chk_o_0_2       ; not equal, so see if o
             mov         byte [eax], x_name
             jmp         finish_0_2
-chk_o_0_2:  mov         ebx, o_pos
+chk_o_0_2:  mov         ebx, [o_pos]
             test        ebx, row_0_2
-            jnz         space_0_2
+            jz          space_0_2
             mov         byte [eax], o_name
             jmp         finish_0_2
 space_0_2:  mov         byte [eax], space
