@@ -9,8 +9,8 @@
             bar         equ "|"
             x_name      equ "X"
             o_name      equ "O"
-            x_dat       dw 0b0000_0001_1111_1001        ; track score, board placement
-            o_dat       dw 2        ; track score, board placement
+            x_dat       dw 0b1100_0011_0000_0000        ; track score, board placement
+            o_dat       dw 0b1100_0010_0000_0000        ; track score, board placement
             section     .bss
             BOARD_BFR   resb 14     ; store line to write, 13 characters plus null byte
             section     .text
@@ -28,7 +28,6 @@ _start:
 run_game:
             call print_board
             call get_input
-            call process_input
             ret
 
 ; PURPOSE:  Prints the current board to the console.
@@ -238,7 +237,20 @@ row_2_print:
             ret
 
 get_input:
-            ret
-
-process_input:
+            ; determine player turn
+            mov         ax, [x_dat]
+            mov         bx, [o_dat]
+            shl         ax, 7          ; clear out 7 most-significant bits of eax
+            shr         ax, 7
+            shl         bx, 7          ; clear out 7 most-significant bits of ebx
+            shr         bx, 7
+            xor         al, ah         ; parity(ax) = parity(ah ^ al)
+            xor         bl, bh         ; parity(bx) = parity(bh ^ bl)
+            add         al, bl         ; parity(al + bl) = player turn
+            jp          x_turn         ; even parity => X's turn
+o_turn:                  ; odd parity => O's turn
+            jmp         end_turn
+x_turn:     
+end_turn:
+            
             ret
