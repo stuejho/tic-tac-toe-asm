@@ -9,6 +9,8 @@
             bar         equ "|"
             x_name      equ "X"
             o_name      equ "O"
+            x_prompt    dw "X > ", 0
+            o_prompt    dw "O > ", 0
             x_dat       dw 0b1100_0011_0000_0000        ; track score, board placement
             o_dat       dw 0b1100_0010_0000_0000        ; track score, board placement
             section     .bss
@@ -16,6 +18,7 @@
             section     .text
             global      _start
             extern      print_line
+            extern      print_newline
 _start:
             ; call main game loop
             call        run_game
@@ -60,6 +63,7 @@ print_board:
             push        c_numbers
             call        print_line
             add         esp, 4
+            call        print_newline
 
             ; restore eax and ebx
             pop         eax
@@ -248,9 +252,11 @@ get_input:
             xor         bl, bh         ; parity(bx) = parity(bh ^ bl)
             add         al, bl         ; parity(al + bl) = player turn
             jp          x_turn         ; even parity => X's turn
-o_turn:                  ; odd parity => O's turn
-            jmp         end_turn
-x_turn:     
-end_turn:
+o_turn:     push        o_prompt       ; odd parity => O's turn
+            jmp         proc_turn
+x_turn:     push        o_prompt
+proc_turn:  call        print_newline
+            call        print_line
+            add         esp, 4
             
             ret

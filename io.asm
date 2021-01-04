@@ -34,7 +34,7 @@ print_line:
             int         LINUX_SYSCALL
 
             ; print newline character
-            call write_newline
+            call print_newline
 
             ; epilogue
             mov         esp, ebp
@@ -53,11 +53,11 @@ print_line:
 ;       ebx - target file descriptor, STDOUT
 ;       ecx - address of newline character code
 ;       edx - number of bytes to write, 1
-            global      write_newline
+            global      print_newline
             section     .data
             newline     db 0xA
             section     .text
-write_newline:
+print_newline:
             ; prologue
             push        ebp
             mov         ebp, esp
