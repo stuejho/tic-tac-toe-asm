@@ -148,3 +148,88 @@ count_loop_end:
             mov         esp, ebp
             pop         ebp
             ret
+
+; PURPOSE:  Converts an integer number to a decimal string
+;           for display.
+;
+; INPUT:    int_to_string(int value, char *buffer)
+;           value - an integer to convert
+;           buffer - buffer large enough to hold the largest
+;           possible number
+;
+; OUTPUT:   Overwrites the buffer with the decimal string
+;
+; PROCESS:
+;   Registers:
+;       ecx holds the count of characters processed
+;       eax holds the current value
+;       edi holds the base
+            global      int_to_string
+            section     .data
+            section     .text
+            ST_VALUE    equ 8
+            ST_BUFFER   equ 12
+int_to_string:
+            push        ebp
+            mov         ebp, esp
+
+            ; ecx = 0
+            xor         ecx, ecx
+
+            ; eax = value
+            mov         eax, [ebp + ST_VALUE]
+
+            ; edi = base = 10
+            mov         edi, 10
+
+conversion_loop:
+            ; division is on edx:eax, so clear edx
+            xor         edx, edx
+
+            ; divide edx:eax by 10
+            div         edi
+
+            ; quotient is in eax (new current value)
+            ; remainder is in edx, convert it to a 
+            ; character value
+            add         edx, "0"
+
+            ; push onto stack to order correctly later
+            push        edx
+
+            ; increment digit count
+            inc         ecx
+
+            ; done processing, so populate buffer
+            cmp         eax, 0
+            je          end_conversion_loop
+
+            ; continue processing
+            jmp         conversion_loop
+
+end_conversion_loop:
+            ; get pointer to buffer
+            mov         edx, [ebp + ST_BUFFER]
+
+copy_reversing_loop:
+            ; move byte over
+            pop         eax
+            mov         [edx], al
+
+            ; decrement ecx (count)
+            dec         ecx
+
+            ; increment pointer
+            inc         edx
+
+            ; check to see if we are done
+            cmp         ecx, 0
+            je          end_copy_reversing_loop
+            jmp         copy_reversing_loop
+
+end_copy_reversing_loop:
+            mov         byte [edx], 0        ; null byte
+            
+            mov         esp, ebp
+            pop         ebp
+            ret

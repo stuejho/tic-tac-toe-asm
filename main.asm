@@ -7,17 +7,20 @@
             row_2_name  equ "c"
             space       equ " "
             bar         equ "|"
+            colon       equ ":"
             x_name      equ "X"
             o_name      equ "O"
             x_win_val   equ 1
             o_win_val   equ 2
-            x_prompt    dw "X > ", 0
-            o_prompt    dw "O > ", 0
-            x_win_str   db "X wins!", 0
-            o_win_str   db "O wins!", 0
-            invalid_prompt db "Invalid input, try again > ", 0
-            x_dat       dw 0b1100_0010_0000_0000        ; track score, board placement
-            o_dat       dw 0b1100_0010_0000_0000        ; track score, board placement
+            x_prompt    dw  "X > ", 0
+            o_prompt    dw  "O > ", 0
+            x_win_str   db  "X wins!", 0
+            o_win_str   db  "O wins!", 0
+            invalid_prompt  db "Invalid input, try again > ", 0
+            x_dat       dw  0b0000_0000_0000_0000       ; track score, board placement
+            o_dat       dw  0b0000_0000_0000_0000       ; track score, board placement
+            score_bit   equ 0b0000_0010_0000_0000       ; used to increment score
+            reset_mask  equ 0b1111_1110_0000_0000       ; used to increment score
             win_row_0   equ 0b0000_0000_0000_0111
             win_row_1   equ 0b0000_0000_0011_1000
             win_row_2   equ 0b0000_0001_1100_0000
@@ -37,6 +40,7 @@
             extern      print
             extern      print_line
             extern      print_newline
+            extern      int_to_string
 _start:
             ; call main game loop
             call        run_game
@@ -52,15 +56,22 @@ run_game:
             call        check_status
 chk_x:      cmp         eax, x_win_val
             jne         chk_o
+            add         dword [x_dat], score_bit
+            call        print_board     ; print the winning board
             push        x_win_str
-            call        print_line
-            add         esp, 4
-            jmp         run_game
+            jmp         process_win
 chk_o:      cmp         eax, o_win_val
             jne         run_game
+            add         dword [o_dat], score_bit
+            call        print_board     ; print the winning board
             push        o_win_str
-            call        print_line
-            add         esp, 4
+process_win:
+            call        print_line      ; print the appropriate win string pushed
+            add         esp, 4          ; set stack pointer back to previous position
+            call        print_scores
+            ; ask the user if they want to play again
+reset_game: and         word [x_dat], reset_mask
+            and         word [o_dat], reset_mask
             jmp         run_game
 
 end_game:
@@ -272,6 +283,62 @@ row_2_print:
             pop         ebp
             ret
 
+print_scores:
+            ; print X's score ("X: ")
+            mov         edi, BOARD_BFR
+            mov         byte [edi], x_name
+            inc         edi
+            mov         byte [edi], colon
+            inc         edi
+            mov         byte [edi], space
+            inc         edi 
+            mov         byte [edi], 0
+
+            push        BOARD_BFR
+            call        print
+            add         esp, 4
+            ; score number + newline
+            mov         ax, [x_dat]
+            shr         ax, 9
+            ; ret
+
+            push        BOARD_BFR
+            push        eax
+            call        int_to_string
+            add         esp, 8
+
+            push        BOARD_BFR
+            call        print_line
+            add         esp, 4
+
+            ; print O's score ("O: ")
+            mov         edi, BOARD_BFR
+            mov         byte [edi], o_name
+            inc         edi
+            mov         byte [edi], colon
+            inc         edi
+            mov         byte [edi], space
+            inc         edi 
+            mov         byte [edi], 0
+
+            push        BOARD_BFR
+            call        print
+            add         esp, 4
+            ; score number + newline
+            mov         ax, [o_dat]
+            shr         ax, 9
+
+            push        BOARD_BFR
+            push        eax
+            call        int_to_string
+            add         esp, 8
+
+            push        BOARD_BFR
+            call        print_line
+            add         esp, 4
+
+            ret
+
 get_input:
             push        ebp
             mov         ebp, esp
@@ -346,6 +413,8 @@ end_input:  mov         esp, ebp
             ret
 
 check_status:
+            push        ebp
+            mov         ebp, esp
             ; set return value to 0 initially
             xor         eax, eax
             ; see if x has a winning combination
@@ -392,4 +461,6 @@ check_o:    ; see if o has a winning combination
             jmp         return_status
 o_win:      mov         eax, o_win_val
 return_status:
+            mov         esp, ebp
+            pop         ebp
             ret
