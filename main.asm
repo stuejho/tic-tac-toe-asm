@@ -17,6 +17,7 @@
             x_win_str   db  "X wins!", 0
             o_win_str   db  "O wins!", 0
             invalid_prompt  db "Invalid input, try again > ", 0
+            occupied_prompt db "Already marked, try another spot > ", 0
             x_dat       dw  0b0000_0000_0000_0000       ; track score, board placement
             o_dat       dw  0b0000_0000_0000_0000       ; track score, board placement
             score_bit   equ 0b0000_0010_0000_0000       ; used to increment score
@@ -402,8 +403,20 @@ chk_col_2:  cmp         bl, "3"
             add         ecx, 2              ; shift 2 more bits
             ; now, ecx should have the number of bits to shift
 shift_bits: mov         edx, 1
-            shl         edx, cl
-            mov         eax, [ebp - 4]
+            shl         edx, cl             ; edx has bit to set
+
+            ; make sure this position is not already taken
+x_pos_chk:  test        edx, [x_dat]
+            jz          o_pos_chk
+            push        occupied_prompt
+            jmp         proc_turn
+o_pos_chk:  test        edx, [o_dat]
+            jz          set_token
+            push        occupied_prompt
+            jmp         proc_turn
+
+            ; set token on board
+set_token:  mov         eax, [ebp - 4]
             or          [eax], edx
 
             call        print_newline
