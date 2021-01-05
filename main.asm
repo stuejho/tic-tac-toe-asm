@@ -1,14 +1,15 @@
             %include    "linux.asm"
 
             section     .data
+            ; board constants
+            c_numbers   db  "   1   2   3 ", 0
+            h_line      db  "  ---+---+---", 0
             row_0_name  equ "a"
             row_1_name  equ "b"
             row_2_name  equ "c"
             space       equ " "
             bar         equ "|"
             colon       equ ":"
-            c_numbers   db  "   1   2   3 ", 0
-            h_line      db  "  ---+---+---", 0
             x_name      equ "X"
             o_name      equ "O"
             x_win_val   equ 1
@@ -19,26 +20,28 @@
             o_win_str   db  "O wins!", 0
             invalid_prompt  db "Invalid input, try again > ", 0
             occupied_prompt db "Already marked, try another spot > ", 0
-            x_dat       dw  0b0000_0000_0000_0000       ; track score, board placement
-            o_dat       dw  0b0000_0000_0000_0000       ; track score, board placement
+            ; position/score variables/constants
+            x_dat       dw  0b0000_0000_0000_0000       ; [15..9] - track score, [8..0] - board placement
+            o_dat       dw  0b0000_0000_0000_0000       ; row 0 - 0, 1, 2; row 1 - 3, 4, 5; row 2 - 6, 7, 8
             score_bit   equ 0b0000_0010_0000_0000       ; used to increment score
-            reset_mask  equ 0b1111_1110_0000_0000       ; used to increment score
-            win_row_0   equ 0b0000_0000_0000_0111
-            win_row_1   equ 0b0000_0000_0011_1000
-            win_row_2   equ 0b0000_0001_1100_0000
-            win_col_0   equ 0b0000_0000_0100_1001
-            win_col_1   equ 0b0000_0000_1001_0010
-            win_col_2   equ 0b0000_0001_0010_0100
-            win_maj_d   equ 0b0000_0001_0001_0001
-            win_min_d   equ 0b0000_0000_0101_0100
+            reset_mask  equ 0b1111_1110_0000_0000       ; used to reset positions
+            win_row_0   equ 0b0000_0000_0000_0111       ; row 0 win
+            win_row_1   equ 0b0000_0000_0011_1000       ; row 1 win
+            win_row_2   equ 0b0000_0001_1100_0000       ; row 2 win
+            win_col_0   equ 0b0000_0000_0100_1001       ; column 0 win
+            win_col_1   equ 0b0000_0000_1001_0010       ; column 1 win
+            win_col_2   equ 0b0000_0001_0010_0100       ; column 2 win
+            win_maj_d   equ 0b0000_0001_0001_0001       ; major diagonal win
+            win_min_d   equ 0b0000_0000_0101_0100       ; minor diagonal win
 
             section     .bss
             BOARD_BFR   resb 14     ; store line to write, 13 characters plus null byte
             INPUT_BFR   resb 3      ; 2 bytes to store character, 1 byte for newline
-            INPUT_BFR_SIZE  equ 3
+            INPUT_BFR_SIZE  equ 3   ; input buffer size in bytes
 
             section     .text
             global      _start
+            ; I/O helpers
             extern      print
             extern      print_line
             extern      print_newline
@@ -52,30 +55,42 @@ _start:
             mov         ebx, 0
             int         LINUX_SYSCALL
 
+; PURPOSE:  Runs the Tic-Tac-Toe game.
+;
+; INPUT:    None.
+;
+; RETURNS:  Nothing.
+;
+; PROCESS:  (1) Prints the current board
+;           (2) Gets user input
+;           (3) Determines game status
+;               (a) If a player has won, increment their
+;                   score and prompt for another game
+;               (b) Else, continue the next turn
 run_game:
             call        print_board
             call        get_input
-            call        check_status
-chk_x:      cmp         eax, x_win_val
-            jne         chk_o
-            add         dword [x_dat], score_bit
-            call        print_board     ; print the winning board
-            push        x_win_str
+            call        check_status                ; returns 0 (no winner), 1 (x win), 2 (o win)
+            ; determine whether a player has won
+chk_x:      cmp         eax, x_win_val              ; see if return value of check_status is 1 (x win) 
+            jne         chk_o                       ; x didn't win, so see if o did
+            add         dword [x_dat], score_bit    ; increment x's score
+            call        print_board                 ; print the winning board
+            push        x_win_str                   ; x won, get their victory string ready
             jmp         process_win
-chk_o:      cmp         eax, o_win_val
-            jne         run_game
-            add         dword [o_dat], score_bit
-            call        print_board     ; print the winning board
-            push        o_win_str
+chk_o:      cmp         eax, o_win_val              ; see if return value of check_status is 2 (o win)
+            jne         run_game                    ; x and o did not win, so continue to the next turn
+            add         dword [o_dat], score_bit    ; increment o's score
+            call        print_board                 ; print the winning board
+            push        o_win_str                   ; o won, get their victory string ready
 process_win:
-            call        print_line      ; print the appropriate win string pushed
-            add         esp, 4          ; set stack pointer back to previous position
-            call        print_scores
+            call        print_line                  ; print the appropriate win string pushed
+            add         esp, 4                      ; set stack pointer back to previous position
+            call        print_scores                ; print both player scores
             ; ask the user if they want to play again
-reset_game: and         word [x_dat], reset_mask
-            and         word [o_dat], reset_mask
-            jmp         run_game
-
+reset_game: and         word [x_dat], reset_mask    ; clear x positions
+            and         word [o_dat], reset_mask    ; clear o positions
+            jmp         run_game                    ; start first turn
 end_game:
             ret
 
@@ -91,15 +106,12 @@ end_game:
 ;   ebx:    o data
 ;   ecx:    loop counter
 ;   edi:    destination index
-            LCL_X_DAT   equ 4
-            LCL_O_DAT   equ 8
+            LCL_X_DAT   equ 4           ; position of local x data variable
+            LCL_O_DAT   equ 8           ; position of local o data variable
 print_board:
-            push        ebp
-            mov         ebp, esp
-
             ; load in data for x and o
-            mov         eax, [x_dat]
-            mov         ebx, [o_dat]
+            mov         eax, [x_dat]    ; eax = x_dat
+            mov         ebx, [o_dat]    ; ebx = o_dat
 
             ; save eax and ebx
             push        ebx
@@ -119,9 +131,9 @@ print_board:
             mov         ecx, 3          ; ecx = 3
 
             ; row name and first space
-            mov         byte [edi], row_0_name
+            mov         byte [edi], row_0_name  ; "a"
             inc         edi
-            mov         byte [edi], space
+            mov         byte [edi], space       ; " "
             inc         edi
 row_0_loop: test        ecx, ecx        ; loop test, while ecx > 0
             jz          row_0_end
@@ -281,66 +293,96 @@ row_2_print:
             call        print_line
             add         esp, 4            
 
-            mov         esp, ebp
-            pop         ebp
+            ; return
             ret
 
+; PURPOSE:  Prints the scores of both players.
+;
+; INPUT:    None.
+;
+; RETURNS:  Nothing.
+;
+; PROCESS:
+;   Registers used:
+;       edi - address of board string buffer
+;       ax - store score value
 print_scores:
             ; print X's score ("X: ")
-            mov         edi, BOARD_BFR
-            mov         byte [edi], x_name
+            mov         edi, BOARD_BFR      ; store address of buffer in edi
+            mov         byte [edi], x_name  ; 0: "X"
             inc         edi
-            mov         byte [edi], colon
+            mov         byte [edi], colon   ; 1: ":"
             inc         edi
-            mov         byte [edi], space
+            mov         byte [edi], space   ; 2: " "
             inc         edi 
-            mov         byte [edi], 0
+            mov         byte [edi], 0       ; 3: null terminator
 
             push        BOARD_BFR
-            call        print
+            call        print               ; prints "X: "
             add         esp, 4
             ; score number + newline
-            mov         ax, [x_dat]
-            shr         ax, 9
+            mov         ax, [x_dat]         ; get score into ax
+            shr         ax, 9               ; shift position bits out
             ; ret
 
-            push        BOARD_BFR
-            push        eax
-            call        int_to_string
+            push        BOARD_BFR           ; address to store converted string
+            push        eax                 ; value to convert (use full register)
+            call        int_to_string       ; converts value to string; result in buffer
             add         esp, 8
 
             push        BOARD_BFR
-            call        print_line
+            call        print_line          ; prints the score + newline
             add         esp, 4
 
             ; print O's score ("O: ")
-            mov         edi, BOARD_BFR
-            mov         byte [edi], o_name
+            mov         edi, BOARD_BFR      ; store address of buffer in edi
+            mov         byte [edi], o_name  ; 0: "O"
             inc         edi
-            mov         byte [edi], colon
+            mov         byte [edi], colon   ; 1: ":"
             inc         edi
-            mov         byte [edi], space
+            mov         byte [edi], space   ; 2: " "
             inc         edi 
-            mov         byte [edi], 0
+            mov         byte [edi], 0       ; 3: null terminator
 
             push        BOARD_BFR
-            call        print
+            call        print               ; prints "O: "
             add         esp, 4
             ; score number + newline
-            mov         ax, [o_dat]
-            shr         ax, 9
+            mov         ax, [o_dat]         ; get score into ax
+            shr         ax, 9               ; shift position bits out
 
-            push        BOARD_BFR
-            push        eax
-            call        int_to_string
+            push        BOARD_BFR           ; address to store converted string
+            push        eax                 ; value to convert
+            call        int_to_string       ; converts value to string; result in buffer
             add         esp, 8
 
             push        BOARD_BFR
-            call        print_line
+            call        print_line          ; prints the score + newline
             add         esp, 4
 
             ret
 
+; PURPOSE:  Gets input from the current player
+;           and updates their position.
+;
+; INPUT:    None.
+;
+; OUTPUT:   Nothing.
+;
+; PROCESS:  (1) Turn determination
+;               ax - x player data
+;               bx - o player data
+;               ah, al - test x placement parity, overall parity
+;               ah, bl - test o placement parity, overall parity
+;               [ebp - 4] - stores data address of current player
+;           (2) Prompt for user input
+;               eax, ebx, ecx, edu - standard system call parameters
+;           (3) Process input
+;               al - row letter input
+;               bl - column number input
+;               ecx/cl - number of bits to left-shift
+;               edx - left-shifted position bit
+;               eax - address of current player data 
 get_input:
             push        ebp
             mov         ebp, esp
@@ -357,10 +399,10 @@ get_input:
             xor         bl, bh          ; parity(bx) = parity(bh ^ bl)
             xor         al, bl          ; parity(al + bl) = player turn
             jp          x_turn          ; even parity => X's turn
-o_turn:     mov         dword [ebp - 4], o_dat  ; address of player data
+o_turn:     mov         dword [ebp - 4], o_dat  ; store address of player data
             push        o_prompt        ; odd parity => O's turn
             jmp         proc_turn
-x_turn:     mov         dword [ebp - 4], x_dat  ; address of player data
+x_turn:     mov         dword [ebp - 4], x_dat  ; store address of player data
             push        x_prompt
             ; print player prompt
 proc_turn:  call        print
@@ -374,12 +416,12 @@ proc_turn:  call        print
             ; process input,
             ; will shift an addend value N bits to the right,
             ; storing this number in ecx
-            mov         al, [INPUT_BFR]     ; first character
-            mov         bl, [INPUT_BFR + 1] ; second character
+            mov         al, [INPUT_BFR]     ; first character read (row letter)
+            mov         bl, [INPUT_BFR + 1] ; second character read (column number)
             ; row check
 chk_row_0:  cmp         al, row_0_name
             jne         chk_row_1
-            xor         ecx, ecx            ; shift 0 bits 
+            xor         ecx, ecx            ; shift 0 bits
             jmp         chk_col_0
 chk_row_1:  cmp         al, row_1_name
             jne         chk_row_2
@@ -403,10 +445,11 @@ chk_col_2:  cmp         bl, "3"
             jne         proc_turn           ; invalid input, so try again
             add         ecx, 2              ; shift 2 more bits
             ; now, ecx should have the number of bits to shift
-shift_bits: mov         edx, 1
-            shl         edx, cl             ; edx has bit to set
+shift_bits: mov         edx, 1              ; will left-shift 0b1 to get correct position
+            shl         edx, cl             ; edx has been shifted, now has bit to set
 
             ; make sure this position is not already taken
+            ; if occupied, print out a message
 x_pos_chk:  test        edx, [x_dat]
             jz          o_pos_chk
             push        occupied_prompt
@@ -426,9 +469,21 @@ end_input:  mov         esp, ebp
             pop         ebp
             ret
 
+; PURPOSE:  Determines whether a player has won the game.
+;
+; INPUT:    None
+;
+; OUTPUT:   0 - no player has won
+;           x_win_val (1) - X won
+;           o_win_val (2) - O won
+;
+; PROCESS:  (1) Check x
+;               ax - stores current x data
+;           (2) Check y
+;               ax - stores current o data
+;           (3) Return value
+;               eax - store return value
 check_status:
-            push        ebp
-            mov         ebp, esp
             ; set return value to 0 initially
             xor         eax, eax
             ; see if x has a winning combination
@@ -473,8 +528,7 @@ check_o:    ; see if o has a winning combination
             test        ax, win_min_d
             jz          o_win
             jmp         return_status
-o_win:      mov         eax, o_win_val
+o_win:      mov         eax, o_win_val      ; set return value
 return_status:
-            mov         esp, ebp
-            pop         ebp
+            ; eax has return value
             ret
