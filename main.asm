@@ -20,6 +20,10 @@
             o_win_str   db  "O wins!", 0
             invalid_prompt  db "Invalid input, try again > ", 0
             occupied_prompt db "Already marked, try another spot > ", 0
+            again_prompt    db "Would you like to play again [y/n] > "
+            again_prompt_length equ $ - again_prompt
+            YES         equ "y"
+            NO          equ "n"
             ; position/score variables/constants
             x_dat       dw  0b0000_0000_0000_0000       ; [15..9] - track score, [8..0] - board placement
             o_dat       dw  0b0000_0000_0000_0000       ; row 0 - 0, 1, 2; row 1 - 3, 4, 5; row 2 - 6, 7, 8
@@ -36,6 +40,7 @@
 
             section     .bss
             BOARD_BFR   resb 14     ; store line to write, 13 characters plus null byte
+            OUTPUT_BFR  resb 16     ; general output buffer
             INPUT_BFR   resb 3      ; 2 bytes to store character, 1 byte for newline
             INPUT_BFR_SIZE  equ 3   ; input buffer size in bytes
 
@@ -88,6 +93,9 @@ process_win:
             add         esp, 4                      ; set stack pointer back to previous position
             call        print_scores                ; print both player scores
             ; ask the user if they want to play again
+            call        check_again
+            test        eax, eax
+            jz          end_game 
 reset_game: and         word [x_dat], reset_mask    ; clear x positions
             and         word [o_dat], reset_mask    ; clear o positions
             jmp         run_game                    ; start first turn
@@ -532,3 +540,45 @@ o_win:      mov         eax, o_win_val      ; set return value
 return_status:
             ; eax has return value
             ret
+
+; PURPOSE:  Asks the user if they would like to play again.
+;
+; INPUT:    None.
+;
+; RETURNS:  0 - No
+;           1 - Yes
+;
+; PROCESS:  (1) Print prompt
+;               eax, ebx, ecx, edx - standard system call parameters
+;           (2) Read input
+;               eax, ebx, ecx, edx - standard system call parameters
+;           (3) Process input
+;               eax - store return value
+;               edx - store input character
+check_again:
+            ; print prompt
+            mov         eax, SYS_WRITE
+            mov         ebx, STDOUT
+            mov         ecx, again_prompt
+            mov         edx, again_prompt_length
+            int         LINUX_SYSCALL
+
+            ; read input
+            mov         eax, SYS_READ
+            mov         ebx, STDIN
+            mov         ecx, INPUT_BFR
+            mov         edx, INPUT_BFR_SIZE
+            int         LINUX_SYSCALL
+
+            ; process input
+            xor         eax, eax            ; eax = 0
+            mov         dl, [INPUT_BFR]
+check_yes:  cmp         dl, YES             ; input was y?
+            jne         check_no
+            mov         eax, 1              ; eax = 1
+            jmp         check_end
+check_no:   cmp         dl, NO              ; input was n?
+            jne         check_again
+
+            ; eax has result
+check_end:  ret
