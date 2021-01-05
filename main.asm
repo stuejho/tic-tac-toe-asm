@@ -28,10 +28,12 @@
             O_NAME      equ "O"
             X_WIN_VAL   equ 1
             O_WIN_VAL   equ 2
+            TIE_VAL     equ 3
             X_PROMPT    dw  "X > ", 0
             O_PROMPT    dw  "O > ", 0
             X_WIN_STR   db  "X wins!", 0
             O_WIN_STR   db  "O wins!", 0
+            TIE_STR     db  "Draw!", 0
             INVALID_PRMT    db "Invalid input, try again > ", 0
             OCCUPIED_PRMT   db "Already marked, try another spot > ", 0
             AGAIN_PRMT      db "Would you like to play again? [y/n] > "
@@ -43,6 +45,7 @@
             o_dat       dw  0b0000_0000_0000_0000       ; row 0 - 0, 1, 2; row 1 - 3, 4, 5; row 2 - 6, 7, 8
             score_bit   equ 0b0000_0010_0000_0000       ; used to increment score
             reset_mask  equ 0b1111_1110_0000_0000       ; used to reset positions
+            TIE_MASK    equ 0b0000_0001_1111_1111       ; show tied game
             win_row_0   equ 0b0000_0000_0000_0111       ; row 0 win
             win_row_1   equ 0b0000_0000_0011_1000       ; row 1 win
             win_row_2   equ 0b0000_0001_1100_0000       ; row 2 win
@@ -89,20 +92,25 @@ _start:
 run_game:
             call        print_board
             call        get_input
-            call        check_status                ; returns 0 (no winner), 1 (x win), 2 (o win)
+            call        check_status                ; returns 0 (no winner), 1 (x win), 2 (o win), 3 (tie)
             ; determine whether a player has won
 chk_x:      cmp         eax, X_WIN_VAL              ; see if return value of check_status is 1 (x win) 
             jne         chk_o                       ; x didn't win, so see if o did
             add         dword [x_dat], score_bit    ; increment x's score
             call        print_board                 ; print the winning board
             push        X_WIN_STR                   ; x won, get their victory string ready
-            jmp         process_win
+            jmp         process_res
 chk_o:      cmp         eax, O_WIN_VAL              ; see if return value of check_status is 2 (o win)
-            jne         run_game                    ; x and o did not win, so continue to the next turn
+            jne         chk_tie                     ; x and o did not win, so continue to the next turn
             add         dword [o_dat], score_bit    ; increment o's score
             call        print_board                 ; print the winning board
             push        O_WIN_STR                   ; o won, get their victory string ready
-process_win:
+            jmp         process_res
+chk_tie:    cmp         eax, TIE_VAL
+            jne         run_game                    ; game is not over, so continue
+            call        print_board                 ; print the tied board
+            push        TIE_STR                     ; tied game, get string ready
+process_res:
             call        print_line                  ; print the appropriate win string pushed
             add         esp, 4                      ; set stack pointer back to previous position
             call        print_scores                ; print both player scores
@@ -336,6 +344,7 @@ end_input:  mov         esp, ebp
 ; OUTPUT:   0 - no player has won
 ;           X_WIN_VAL (1) - X won
 ;           O_WIN_VAL (2) - O won
+;           TIE_VAL   (3) - tied game
 ;
 ; PROCESS:  (1) Check x
 ;               ax - stores current x data
@@ -387,8 +396,16 @@ check_o:    ; see if o has a winning combination
             jz          o_win
             test        ax, win_min_d
             jz          o_win
-            jmp         return_status
+            jmp         check_tie
 o_win:      mov         eax, O_WIN_VAL      ; set return value
+            jmp         return_status
+            ; see if there is a tie
+check_tie:  mov         ax, [x_dat]
+            or          ax, [o_dat]         ; ax has x_dat OR o_dat
+            not         ax
+            test        ax, TIE_MASK        ; check to see if all position bits were set
+            jnz         return_status       ; if not all set, no one has won/lost/tied
+            mov         eax, TIE_VAL        ; tied game, so set return value
 return_status:
             ; eax has return value
             ret
