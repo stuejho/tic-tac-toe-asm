@@ -2,15 +2,22 @@
 
             section     .data
             ; board constants
-            board       db  "   1   2   3 \n",
-                        db  "a    |   |   \n",
-                        db  "  ---+---+---\n",
-                        db  "b    |   |   \n",
-                        db  "  ---+---+---\n",
-                        db  "c    |   |   \n"
+            board       db  "   1   2   3 ", 0xa
+                        db  "a    |   |   ", 0xa
+                        db  "  ---+---+---", 0xa
+                        db  "b    |   |   ", 0xa
+                        db  "  ---+---+---", 0xa
+                        db  "c    |   |   ", 0xa
             board_len   equ $ - board
-            c_numbers   db  "   1   2   3 ", 0
-            h_line      db  "  ---+---+---", 0
+            b_00_offset db  17                  ; offset of a1
+            b_01_offset db  21                  ; offset of a2
+            b_02_offset db  25                  ; offset of a3
+            b_10_offset db  45                  ; offset of b1
+            b_11_offset db  49                  ; offset of b2
+            b_12_offset db  53                  ; offset of b3
+            b_20_offset db  73                  ; offset of c1
+            b_21_offset db  77                  ; offset of c2
+            b_22_offset db  81                  ; offset of c3
             row_0_name  equ "a"
             row_1_name  equ "b"
             row_2_name  equ "c"
@@ -105,7 +112,18 @@ process_win:
             jz          end_game 
 reset_game: and         word [x_dat], reset_mask    ; clear x positions
             and         word [o_dat], reset_mask    ; clear o positions
-            jmp         run_game                    ; start first turn
+            ; clear board
+            xor         eax, eax                    ; clear eax register
+            xor         ecx, ecx                    ; ecx = 0
+clear_board:cmp         ecx, 9                      ; run loop 9 times
+            jge         new_game                    ; end of loop 
+            ; set space
+            mov         al, [b_00_offset + ecx]     ; al = offset value
+            mov         byte [board + eax], space   ; modify character to space
+
+            inc         ecx                         ; ecx = ecx + 1
+            jmp         clear_board
+new_game:   jmp         run_game                    ; start new game
 end_game:
             ret
 
@@ -115,198 +133,14 @@ end_game:
 ;
 ; RETURNS:  Nothing.
 ;
-; PROCESS:
-;   Registers used:
-;   eax:    x data
-;   ebx:    o data
-;   ecx:    loop counter
-;   edi:    destination index
-            LCL_X_DAT   equ 4           ; position of local x data variable
-            LCL_O_DAT   equ 8           ; position of local o data variable
+; PROCESS:  (1) Call SYS_WRITE with values in eax, ebx, ecx, edx
 print_board:
-            ; load in data for x and o
-            mov         eax, [x_dat]    ; eax = x_dat
-            mov         ebx, [o_dat]    ; ebx = o_dat
-
-            ; save eax and ebx
-            push        ebx
-            push        eax
-
-            ; column numbers
-            push        c_numbers
-            call        print_line
-            add         esp, 4
-
-            ; restore eax and ebx
-            pop         eax
-            pop         ebx
-           
-            ; first row
-            mov         edi, BOARD_BFR  ; starting address of buffer
-            mov         ecx, 3          ; ecx = 3
-
-            ; row name and first space
-            mov         byte [edi], row_0_name  ; "a"
-            inc         edi
-            mov         byte [edi], space       ; " "
-            inc         edi
-row_0_loop: test        ecx, ecx        ; loop test, while ecx > 0
-            jz          row_0_end
-
-            ; [space]
-            mov         byte [edi], space
-            inc         edi
-
-            ; symbol
-row_0_x:    test        eax, 1          ; see if an x is placed
-            jz          row_0_o
-            mov         byte [edi], x_name
-            jmp         row_0_after
-row_0_o:    test        ebx, 1          ; see if an o is placed
-            jz          row_0_space 
-            mov         byte [edi], o_name
-            jmp         row_0_after
-row_0_space:mov         byte [edi], space
-row_0_after:shr         eax, 1          ; right shift eax and ebx one bit
-            shr         ebx, 1
-            inc         edi             ; increment counter
-
-            ; [space]
-            mov         byte [edi], space
-            inc         edi
-
-            ; [bar]
-            mov         byte [edi], bar 
-            inc         edi
-
-            dec         ecx
-            jmp         row_0_loop
-row_0_end:  mov         byte [edi - 1], 0  ; make last character a null byte 
-row_0_print:
-            ; save contents of eax and ebx
-            push        ebx
-            push        eax
-
-            ; print row 0
-            push        BOARD_BFR
-            call        print_line
-            add         esp, 4            
-
-            ; first separator
-            push        h_line
-            call        print_line
-            add         esp, 4
-
-            ; restore eax and ebx
-            pop         eax
-            pop         ebx
-
-            ; second row
-            mov         edi, BOARD_BFR  ; starting address of buffer
-            mov         ecx, 3          ; ecx = 3
-
-            ; row name and first space
-            mov         byte [edi], row_1_name
-            inc         edi
-            mov         byte [edi], space
-            inc         edi
-row_1_loop: test        ecx, ecx        ; loop test, while ecx > 0
-            jz          row_1_end
-
-            ; [space]
-            mov         byte [edi], space
-            inc         edi
-
-            ; symbol
-row_1_x:    test        eax, 1          ; see if an x is placed
-            jz          row_1_o
-            mov         byte [edi], x_name
-            jmp         row_1_after
-row_1_o:    test        ebx, 1          ; see if an o is placed
-            jz          row_1_space 
-            mov         byte [edi], o_name
-            jmp         row_1_after
-row_1_space:mov         byte [edi], space
-row_1_after:shr         eax, 1          ; right shift eax and ebx one bit
-            shr         ebx, 1
-            inc         edi             ; increment counter
-
-            ; [space]
-            mov         byte [edi], space
-            inc         edi
-
-            ; [bar]
-            mov         byte [edi], bar 
-            inc         edi
-
-            dec         ecx
-            jmp         row_1_loop
-row_1_end:  mov         byte [edi - 1], 0  ; make last character a null byte 
-row_1_print:
-            ; save contents of eax and ebx
-            push        ebx
-            push        eax
-
-            ; print row 1
-            push        BOARD_BFR
-            call        print_line
-            add         esp, 4            
-
-            ; second separator
-            push        h_line
-            call        print_line
-            add         esp, 4
-
-            ; restore eax and ebx
-            pop         eax
-            pop         ebx
-
-            ; third row
-            mov         edi, BOARD_BFR  ; starting address of buffer
-            mov         ecx, 3          ; ecx = 3
-
-            ; row name and first space
-            mov         byte [edi], row_2_name
-            inc         edi
-            mov         byte [edi], space
-            inc         edi
-row_2_loop: test        ecx, ecx        ; loop test, while ecx > 0
-            jz          row_2_end
-
-            ; [space]
-            mov         byte [edi], space
-            inc         edi
-
-            ; symbol
-row_2_x:    test        eax, 1          ; see if an x is placed
-            jz          row_2_o
-            mov         byte [edi], x_name
-            jmp         row_2_after
-row_2_o:    test        ebx, 1          ; see if an o is placed
-            jz          row_2_space 
-            mov         byte [edi], o_name
-            jmp         row_2_after
-row_2_space:mov         byte [edi], space
-row_2_after:shr         eax, 1          ; right shift eax and ebx one bit
-            shr         ebx, 1
-            inc         edi             ; increment counter
-
-            ; [space]
-            mov         byte [edi], space
-            inc         edi
-
-            ; [bar]
-            mov         byte [edi], bar 
-            inc         edi
-
-            dec         ecx
-            jmp         row_2_loop
-row_2_end:  mov         byte [edi - 1], 0  ; make last character a null byte 
-row_2_print:
-            ; print row 3
-            push        BOARD_BFR
-            call        print_line
-            add         esp, 4            
+            ; print board using syscall
+            mov         eax, SYS_WRITE
+            mov         ebx, STDOUT
+            mov         ecx, board
+            mov         edx, board_len
+            int         LINUX_SYSCALL
 
             ; return
             ret
@@ -390,6 +224,7 @@ print_scores:
 ;               ah, al - test x placement parity, overall parity
 ;               ah, bl - test o placement parity, overall parity
 ;               [ebp - 4] - stores data address of current player
+;               [ebp - 8] - player name
 ;           (2) Prompt for user input
 ;               eax, ebx, ecx, edu - standard system call parameters
 ;           (3) Process input
@@ -398,10 +233,14 @@ print_scores:
 ;               ecx/cl - number of bits to left-shift
 ;               edx - left-shifted position bit
 ;               eax - address of current player data 
+;           (4) Set token in data and on board
+;               eax - address of current player data
+;               al  - offset of board offset
+;               bl  - player token
 get_input:
             push        ebp
             mov         ebp, esp
-            sub         esp, 4          ; space to store address of current player
+            sub         esp, 8          ; space to store address of current player
 
             ; determine player turn
             mov         ax, [x_dat]     ; load player data
@@ -415,9 +254,11 @@ get_input:
             xor         al, bl          ; parity(al + bl) = player turn
             jp          x_turn          ; even parity => X's turn
 o_turn:     mov         dword [ebp - 4], o_dat  ; store address of player data
+            mov         byte [ebp - 8], o_name
             push        o_prompt        ; odd parity => O's turn
             jmp         proc_turn
 x_turn:     mov         dword [ebp - 4], x_dat  ; store address of player data
+            mov         byte [ebp - 8], x_name
             push        x_prompt
             ; print player prompt
 proc_turn:  call        print
@@ -475,8 +316,12 @@ o_pos_chk:  test        edx, [o_dat]
             jmp         proc_turn
 
             ; set token on board
-set_token:  mov         eax, [ebp - 4]
-            or          [eax], edx
+set_token:  mov         eax, [ebp - 4]      ; eax = address of player data
+            or          [eax], edx          ; set player data position bit
+            xor         eax, eax            ; clear eax
+            mov         al, [b_00_offset + ecx] ; set al to offset value
+            mov         bl, [ebp - 8]       ; ebx = player token
+            mov         [board + eax], bl   ; modify character at board + offset
 
             call        print_newline
 
