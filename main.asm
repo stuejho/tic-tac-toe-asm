@@ -9,15 +9,29 @@
             bar         equ "|"
             x_name      equ "X"
             o_name      equ "O"
+            x_win_val   equ 1
+            o_win_val   equ 2
             x_prompt    dw "X > ", 0
             o_prompt    dw "O > ", 0
-            invalid_prompt dw "Invalid input, try again > ", 0
+            x_win_str   db "X wins!", 0
+            o_win_str   db "O wins!", 0
+            invalid_prompt db "Invalid input, try again > ", 0
             x_dat       dw 0b1100_0010_0000_0000        ; track score, board placement
             o_dat       dw 0b1100_0010_0000_0000        ; track score, board placement
+            win_row_0   equ 0b0000_0000_0000_0111
+            win_row_1   equ 0b0000_0000_0011_1000
+            win_row_2   equ 0b0000_0001_1100_0000
+            win_col_0   equ 0b0000_0000_0100_1001
+            win_col_1   equ 0b0000_0000_1001_0010
+            win_col_2   equ 0b0000_0001_0010_0100
+            win_maj_d   equ 0b0000_0001_0001_0001
+            win_min_d   equ 0b0000_0000_0101_0100
+
             section     .bss
             BOARD_BFR   resb 14     ; store line to write, 13 characters plus null byte
             INPUT_BFR   resb 3      ; 2 bytes to store character, 1 byte for newline
             INPUT_BFR_SIZE  equ 3
+
             section     .text
             global      _start
             extern      print
@@ -33,9 +47,23 @@ _start:
             int         LINUX_SYSCALL
 
 run_game:
-            call print_board
-            call get_input
-            call print_board
+            call        print_board
+            call        get_input
+            call        check_status
+chk_x:      cmp         eax, x_win_val
+            jne         chk_o
+            push        x_win_str
+            call        print_line
+            add         esp, 4
+            jmp         run_game
+chk_o:      cmp         eax, o_win_val
+            jne         run_game
+            push        o_win_str
+            call        print_line
+            add         esp, 4
+            jmp         run_game
+
+end_game:
             ret
 
 ; PURPOSE:  Prints the current board to the console.
@@ -315,4 +343,53 @@ shift_bits: mov         edx, 1
 
 end_input:  mov         esp, ebp
             pop         ebp
+            ret
+
+check_status:
+            ; set return value to 0 initially
+            xor         eax, eax
+            ; see if x has a winning combination
+check_x:    mov         ax, [x_dat]         ; store current x data
+            not         ax                  ; flip bits for comparison
+            test        ax, win_row_0
+            jz          x_win               ; 0 result means all bits selected by mask
+            test        ax, win_row_1
+            jz          x_win
+            test        ax, win_row_2
+            jz          x_win
+            test        ax, win_col_0
+            jz          x_win
+            test        ax, win_col_1
+            jz          x_win
+            test        ax, win_col_2
+            jz          x_win
+            test        ax, win_maj_d
+            jz          x_win
+            test        ax, win_min_d
+            jz          x_win
+            jmp         check_o
+x_win:      mov         eax, x_win_val
+            jmp         return_status
+check_o:    ; see if o has a winning combination
+            mov         ax, [o_dat]         ; store current o data
+            not         ax                  ; flip bits for comparison
+            test        ax, win_row_0
+            jz          o_win               ; 0 result means all bits selected by mask
+            test        ax, win_row_1
+            jz          o_win
+            test        ax, win_row_2
+            jz          o_win
+            test        ax, win_col_0
+            jz          o_win
+            test        ax, win_col_1
+            jz          o_win
+            test        ax, win_col_2
+            jz          o_win
+            test        ax, win_maj_d
+            jz          o_win
+            test        ax, win_min_d
+            jz          o_win
+            jmp         return_status
+o_win:      mov         eax, o_win_val
+return_status:
             ret
