@@ -43,17 +43,17 @@
             ; position/score variables/constants
             x_dat       dw  0b0000_0000_0000_0000       ; [15..9] - track score, [8..0] - board placement
             o_dat       dw  0b0000_0000_0000_0000       ; row 0 - 0, 1, 2; row 1 - 3, 4, 5; row 2 - 6, 7, 8
-            score_bit   equ 0b0000_0010_0000_0000       ; used to increment score
-            reset_mask  equ 0b1111_1110_0000_0000       ; used to reset positions
+            SCORE_BIT   equ 0b0000_0010_0000_0000       ; used to increment score
+            RESET_MASK  equ 0b1111_1110_0000_0000       ; used to reset positions
             TIE_MASK    equ 0b0000_0001_1111_1111       ; show tied game
-            win_row_0   equ 0b0000_0000_0000_0111       ; row 0 win
-            win_row_1   equ 0b0000_0000_0011_1000       ; row 1 win
-            win_row_2   equ 0b0000_0001_1100_0000       ; row 2 win
-            win_col_0   equ 0b0000_0000_0100_1001       ; column 0 win
-            win_col_1   equ 0b0000_0000_1001_0010       ; column 1 win
-            win_col_2   equ 0b0000_0001_0010_0100       ; column 2 win
-            win_maj_d   equ 0b0000_0001_0001_0001       ; major diagonal win
-            win_min_d   equ 0b0000_0000_0101_0100       ; minor diagonal win
+            WIN_ROW_0   equ 0b0000_0000_0000_0111       ; row 0 win
+            WIN_ROW_1   equ 0b0000_0000_0011_1000       ; row 1 win
+            WIN_ROW_2   equ 0b0000_0001_1100_0000       ; row 2 win
+            WIN_COL_0   equ 0b0000_0000_0100_1001       ; column 0 win
+            WIN_COL_1   equ 0b0000_0000_1001_0010       ; column 1 win
+            WIN_COL_2   equ 0b0000_0001_0010_0100       ; column 2 win
+            WIN_MAJ_D   equ 0b0000_0001_0001_0001       ; major diagonal win
+            WIN_MIN_D   equ 0b0000_0000_0101_0100       ; minor diagonal win
 
             section     .bss
             BOARD_BFR   resb 14     ; store line to write, 13 characters plus null byte
@@ -96,13 +96,13 @@ run_game:
             ; determine whether a player has won
 chk_x:      cmp         eax, X_WIN_VAL              ; see if return value of check_status is 1 (x win) 
             jne         chk_o                       ; x didn't win, so see if o did
-            add         dword [x_dat], score_bit    ; increment x's score
+            add         dword [x_dat], SCORE_BIT    ; increment x's score
             call        print_board                 ; print the winning board
             push        X_WIN_STR                   ; x won, get their victory string ready
             jmp         process_res
 chk_o:      cmp         eax, O_WIN_VAL              ; see if return value of check_status is 2 (o win)
             jne         chk_tie                     ; x and o did not win, so continue to the next turn
-            add         dword [o_dat], score_bit    ; increment o's score
+            add         dword [o_dat], SCORE_BIT    ; increment o's score
             call        print_board                 ; print the winning board
             push        O_WIN_STR                   ; o won, get their victory string ready
             jmp         process_res
@@ -118,8 +118,8 @@ process_res:
             call        check_again
             test        eax, eax
             jz          end_game 
-reset_game: and         word [x_dat], reset_mask    ; clear x positions
-            and         word [o_dat], reset_mask    ; clear o positions
+reset_game: and         word [x_dat], RESET_MASK    ; clear x positions
+            and         word [o_dat], RESET_MASK    ; clear o positions
             ; clear board
             xor         eax, eax                    ; clear eax register
             xor         ecx, ecx                    ; ecx = 0
@@ -358,21 +358,21 @@ check_status:
             ; see if x has a winning combination
 check_x:    mov         ax, [x_dat]         ; store current x data
             not         ax                  ; flip bits for comparison
-            test        ax, win_row_0
+            test        ax, WIN_ROW_0
             jz          x_win               ; 0 result means all bits selected by mask
-            test        ax, win_row_1
+            test        ax, WIN_ROW_1
             jz          x_win
-            test        ax, win_row_2
+            test        ax, WIN_ROW_2
             jz          x_win
-            test        ax, win_col_0
+            test        ax, WIN_COL_0
             jz          x_win
-            test        ax, win_col_1
+            test        ax, WIN_COL_1
             jz          x_win
-            test        ax, win_col_2
+            test        ax, WIN_COL_2
             jz          x_win
-            test        ax, win_maj_d
+            test        ax, WIN_MAJ_D
             jz          x_win
-            test        ax, win_min_d
+            test        ax, WIN_MIN_D
             jz          x_win
             jmp         check_o
 x_win:      mov         eax, X_WIN_VAL
@@ -380,21 +380,21 @@ x_win:      mov         eax, X_WIN_VAL
 check_o:    ; see if o has a winning combination
             mov         ax, [o_dat]         ; store current o data
             not         ax                  ; flip bits for comparison
-            test        ax, win_row_0
+            test        ax, WIN_ROW_0
             jz          o_win               ; 0 result means all bits selected by mask
-            test        ax, win_row_1
+            test        ax, WIN_ROW_1
             jz          o_win
-            test        ax, win_row_2
+            test        ax, WIN_ROW_2
             jz          o_win
-            test        ax, win_col_0
+            test        ax, WIN_COL_0
             jz          o_win
-            test        ax, win_col_1
+            test        ax, WIN_COL_1
             jz          o_win
-            test        ax, win_col_2
+            test        ax, WIN_COL_2
             jz          o_win
-            test        ax, win_maj_d
+            test        ax, WIN_MAJ_D
             jz          o_win
-            test        ax, win_min_d
+            test        ax, WIN_MIN_D
             jz          o_win
             jmp         check_tie
 o_win:      mov         eax, O_WIN_VAL      ; set return value
