@@ -2,6 +2,13 @@
 
             section     .data
             ; board constants
+            board       db  "   1   2   3 \n",
+                        db  "a    |   |   \n",
+                        db  "  ---+---+---\n",
+                        db  "b    |   |   \n",
+                        db  "  ---+---+---\n",
+                        db  "c    |   |   \n"
+            board_len   equ $ - board
             c_numbers   db  "   1   2   3 ", 0
             h_line      db  "  ---+---+---", 0
             row_0_name  equ "a"
@@ -18,10 +25,10 @@
             o_prompt    dw  "O > ", 0
             x_win_str   db  "X wins!", 0
             o_win_str   db  "O wins!", 0
-            invalid_prompt  db "Invalid input, try again > ", 0
-            occupied_prompt db "Already marked, try another spot > ", 0
-            again_prompt    db "Would you like to play again [y/n] > "
-            again_prompt_length equ $ - again_prompt
+            invalid_prmt    db "Invalid input, try again > ", 0
+            occupied_prmt   db "Already marked, try another spot > ", 0
+            again_prmt      db "Would you like to play again? [y/n] > "
+            again_prmt_len  equ $ - again_prmt
             YES         equ "y"
             NO          equ "n"
             ; position/score variables/constants
@@ -316,7 +323,7 @@ row_2_print:
 ;       ax - store score value
 print_scores:
             ; print X's score ("X: ")
-            mov         edi, BOARD_BFR      ; store address of buffer in edi
+            mov         edi, OUTPUT_BFR     ; store address of buffer in edi
             mov         byte [edi], x_name  ; 0: "X"
             inc         edi
             mov         byte [edi], colon   ; 1: ":"
@@ -325,7 +332,7 @@ print_scores:
             inc         edi 
             mov         byte [edi], 0       ; 3: null terminator
 
-            push        BOARD_BFR
+            push        OUTPUT_BFR
             call        print               ; prints "X: "
             add         esp, 4
             ; score number + newline
@@ -333,17 +340,17 @@ print_scores:
             shr         ax, 9               ; shift position bits out
             ; ret
 
-            push        BOARD_BFR           ; address to store converted string
+            push        OUTPUT_BFR          ; address to store converted string
             push        eax                 ; value to convert (use full register)
             call        int_to_string       ; converts value to string; result in buffer
             add         esp, 8
 
-            push        BOARD_BFR
+            push        OUTPUT_BFR
             call        print_line          ; prints the score + newline
             add         esp, 4
 
             ; print O's score ("O: ")
-            mov         edi, BOARD_BFR      ; store address of buffer in edi
+            mov         edi, OUTPUT_BFR     ; store address of buffer in edi
             mov         byte [edi], o_name  ; 0: "O"
             inc         edi
             mov         byte [edi], colon   ; 1: ":"
@@ -352,19 +359,19 @@ print_scores:
             inc         edi 
             mov         byte [edi], 0       ; 3: null terminator
 
-            push        BOARD_BFR
+            push        OUTPUT_BFR
             call        print               ; prints "O: "
             add         esp, 4
             ; score number + newline
             mov         ax, [o_dat]         ; get score into ax
             shr         ax, 9               ; shift position bits out
 
-            push        BOARD_BFR           ; address to store converted string
+            push        OUTPUT_BFR          ; address to store converted string
             push        eax                 ; value to convert
             call        int_to_string       ; converts value to string; result in buffer
             add         esp, 8
 
-            push        BOARD_BFR
+            push        OUTPUT_BFR
             call        print_line          ; prints the score + newline
             add         esp, 4
 
@@ -436,7 +443,7 @@ chk_row_1:  cmp         al, row_1_name
             mov         ecx, 3              ; shift 3 bits
             jmp         chk_col_0
 chk_row_2:  cmp         al, row_2_name
-            push        invalid_prompt
+            push        invalid_prmt
             jne         proc_turn           ; invalid input, so try again
             mov         ecx, 6
             ; column check
@@ -449,7 +456,7 @@ chk_col_1   cmp         bl, "2"
             inc         ecx                 ; shift 1 more bit
             jmp         shift_bits
 chk_col_2:  cmp         bl, "3"
-            push        invalid_prompt
+            push        invalid_prmt
             jne         proc_turn           ; invalid input, so try again
             add         ecx, 2              ; shift 2 more bits
             ; now, ecx should have the number of bits to shift
@@ -460,11 +467,11 @@ shift_bits: mov         edx, 1              ; will left-shift 0b1 to get correct
             ; if occupied, print out a message
 x_pos_chk:  test        edx, [x_dat]
             jz          o_pos_chk
-            push        occupied_prompt
+            push        occupied_prmt
             jmp         proc_turn
 o_pos_chk:  test        edx, [o_dat]
             jz          set_token
-            push        occupied_prompt
+            push        occupied_prmt
             jmp         proc_turn
 
             ; set token on board
@@ -559,8 +566,8 @@ check_again:
             ; print prompt
             mov         eax, SYS_WRITE
             mov         ebx, STDOUT
-            mov         ecx, again_prompt
-            mov         edx, again_prompt_length
+            mov         ecx, again_prmt
+            mov         edx, again_prmt_len
             int         LINUX_SYSCALL
 
             ; read input
