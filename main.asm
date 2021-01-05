@@ -1,5 +1,4 @@
             %include    "linux.asm"
-            %include    "constants.asm"
 
             section     .data
             row_0_name  equ "a"
@@ -8,6 +7,8 @@
             space       equ " "
             bar         equ "|"
             colon       equ ":"
+            c_numbers   db  "   1   2   3 ", 0
+            h_line      db  "  ---+---+---", 0
             x_name      equ "X"
             o_name      equ "O"
             x_win_val   equ 1
