@@ -8,34 +8,34 @@
                         db  "b    |   |   ", 0xa
                         db  "  ---+---+---", 0xa
                         db  "c    |   |   ", 0xa
-            board_len   equ $ - board
-            b_00_offset db  17                  ; offset of a1
-            b_01_offset db  21                  ; offset of a2
-            b_02_offset db  25                  ; offset of a3
-            b_10_offset db  45                  ; offset of b1
-            b_11_offset db  49                  ; offset of b2
-            b_12_offset db  53                  ; offset of b3
-            b_20_offset db  73                  ; offset of c1
-            b_21_offset db  77                  ; offset of c2
-            b_22_offset db  81                  ; offset of c3
-            row_0_name  equ "a"
-            row_1_name  equ "b"
-            row_2_name  equ "c"
-            space       equ " "
-            bar         equ "|"
-            colon       equ ":"
-            x_name      equ "X"
-            o_name      equ "O"
-            x_win_val   equ 1
-            o_win_val   equ 2
-            x_prompt    dw  "X > ", 0
-            o_prompt    dw  "O > ", 0
-            x_win_str   db  "X wins!", 0
-            o_win_str   db  "O wins!", 0
-            invalid_prmt    db "Invalid input, try again > ", 0
-            occupied_prmt   db "Already marked, try another spot > ", 0
-            again_prmt      db "Would you like to play again? [y/n] > "
-            again_prmt_len  equ $ - again_prmt
+            BOARD_LEN   equ $ - board
+            B_00_OFFSET db  17                  ; offset of a1
+            B_01_OFFSET db  21                  ; offset of a2
+            B_02_OFFSET db  25                  ; offset of a3
+            B_10_OFFSET db  45                  ; offset of b1
+            B_11_OFFSET db  49                  ; offset of b2
+            B_12_OFFSET db  53                  ; offset of b3
+            B_20_OFFSET db  73                  ; offset of c1
+            B_21_OFFSET db  77                  ; offset of c2
+            B_22_OFFSET db  81                  ; offset of c3
+            ROW_0_NAME  equ "a"
+            ROW_1_NAME  equ "b"
+            ROW_2_NAME  equ "c"
+            SPACE       equ " "
+            BAR         equ "|"
+            COLON       equ ":"
+            X_NAME      equ "X"
+            O_NAME      equ "O"
+            X_WIN_VAL   equ 1
+            O_WIN_VAL   equ 2
+            X_PROMPT    dw  "X > ", 0
+            O_PROMPT    dw  "O > ", 0
+            X_WIN_STR   db  "X wins!", 0
+            O_WIN_STR   db  "O wins!", 0
+            INVALID_PRMT    db "Invalid input, try again > ", 0
+            OCCUPIED_PRMT   db "Already marked, try another spot > ", 0
+            AGAIN_PRMT      db "Would you like to play again? [y/n] > "
+            AGAIN_PRMT_LEN  equ $ - AGAIN_PRMT
             YES         equ "y"
             NO          equ "n"
             ; position/score variables/constants
@@ -91,17 +91,17 @@ run_game:
             call        get_input
             call        check_status                ; returns 0 (no winner), 1 (x win), 2 (o win)
             ; determine whether a player has won
-chk_x:      cmp         eax, x_win_val              ; see if return value of check_status is 1 (x win) 
+chk_x:      cmp         eax, X_WIN_VAL              ; see if return value of check_status is 1 (x win) 
             jne         chk_o                       ; x didn't win, so see if o did
             add         dword [x_dat], score_bit    ; increment x's score
             call        print_board                 ; print the winning board
-            push        x_win_str                   ; x won, get their victory string ready
+            push        X_WIN_STR                   ; x won, get their victory string ready
             jmp         process_win
-chk_o:      cmp         eax, o_win_val              ; see if return value of check_status is 2 (o win)
+chk_o:      cmp         eax, O_WIN_VAL              ; see if return value of check_status is 2 (o win)
             jne         run_game                    ; x and o did not win, so continue to the next turn
             add         dword [o_dat], score_bit    ; increment o's score
             call        print_board                 ; print the winning board
-            push        o_win_str                   ; o won, get their victory string ready
+            push        O_WIN_STR                   ; o won, get their victory string ready
 process_win:
             call        print_line                  ; print the appropriate win string pushed
             add         esp, 4                      ; set stack pointer back to previous position
@@ -117,9 +117,9 @@ reset_game: and         word [x_dat], reset_mask    ; clear x positions
             xor         ecx, ecx                    ; ecx = 0
 clear_board:cmp         ecx, 9                      ; run loop 9 times
             jge         new_game                    ; end of loop 
-            ; set space
-            mov         al, [b_00_offset + ecx]     ; al = offset value
-            mov         byte [board + eax], space   ; modify character to space
+            ; set SPACE
+            mov         al, [B_00_OFFSET + ecx]     ; al = offset value
+            mov         byte [board + eax], SPACE   ; modify character to space
 
             inc         ecx                         ; ecx = ecx + 1
             jmp         clear_board
@@ -139,7 +139,7 @@ print_board:
             mov         eax, SYS_WRITE
             mov         ebx, STDOUT
             mov         ecx, board
-            mov         edx, board_len
+            mov         edx, BOARD_LEN
             int         LINUX_SYSCALL
 
             ; return
@@ -158,11 +158,11 @@ print_board:
 print_scores:
             ; print X's score ("X: ")
             mov         edi, OUTPUT_BFR     ; store address of buffer in edi
-            mov         byte [edi], x_name  ; 0: "X"
+            mov         byte [edi], X_NAME  ; 0: "X"
             inc         edi
-            mov         byte [edi], colon   ; 1: ":"
+            mov         byte [edi], COLON   ; 1: ":"
             inc         edi
-            mov         byte [edi], space   ; 2: " "
+            mov         byte [edi], SPACE   ; 2: " "
             inc         edi 
             mov         byte [edi], 0       ; 3: null terminator
 
@@ -185,11 +185,11 @@ print_scores:
 
             ; print O's score ("O: ")
             mov         edi, OUTPUT_BFR     ; store address of buffer in edi
-            mov         byte [edi], o_name  ; 0: "O"
+            mov         byte [edi], O_NAME  ; 0: "O"
             inc         edi
-            mov         byte [edi], colon   ; 1: ":"
+            mov         byte [edi], COLON   ; 1: ":"
             inc         edi
-            mov         byte [edi], space   ; 2: " "
+            mov         byte [edi], SPACE   ; 2: " "
             inc         edi 
             mov         byte [edi], 0       ; 3: null terminator
 
@@ -240,7 +240,7 @@ print_scores:
 get_input:
             push        ebp
             mov         ebp, esp
-            sub         esp, 8          ; space to store address of current player
+            sub         esp, 8          ; SPACE to store address of current player
 
             ; determine player turn
             mov         ax, [x_dat]     ; load player data
@@ -254,12 +254,12 @@ get_input:
             xor         al, bl          ; parity(al + bl) = player turn
             jp          x_turn          ; even parity => X's turn
 o_turn:     mov         dword [ebp - 4], o_dat  ; store address of player data
-            mov         byte [ebp - 8], o_name
-            push        o_prompt        ; odd parity => O's turn
+            mov         byte [ebp - 8], O_NAME
+            push        O_PROMPT        ; odd parity => O's turn
             jmp         proc_turn
 x_turn:     mov         dword [ebp - 4], x_dat  ; store address of player data
-            mov         byte [ebp - 8], x_name
-            push        x_prompt
+            mov         byte [ebp - 8], X_NAME
+            push        X_PROMPT
             ; print player prompt
 proc_turn:  call        print
             add         esp, 4          ; pushed a prompt, so "pop" it out
@@ -275,16 +275,16 @@ proc_turn:  call        print
             mov         al, [INPUT_BFR]     ; first character read (row letter)
             mov         bl, [INPUT_BFR + 1] ; second character read (column number)
             ; row check
-chk_row_0:  cmp         al, row_0_name
+chk_row_0:  cmp         al, ROW_0_NAME
             jne         chk_row_1
             xor         ecx, ecx            ; shift 0 bits
             jmp         chk_col_0
-chk_row_1:  cmp         al, row_1_name
+chk_row_1:  cmp         al, ROW_1_NAME
             jne         chk_row_2
             mov         ecx, 3              ; shift 3 bits
             jmp         chk_col_0
-chk_row_2:  cmp         al, row_2_name
-            push        invalid_prmt
+chk_row_2:  cmp         al, ROW_2_NAME
+            push        INVALID_PRMT
             jne         proc_turn           ; invalid input, so try again
             mov         ecx, 6
             ; column check
@@ -297,7 +297,7 @@ chk_col_1   cmp         bl, "2"
             inc         ecx                 ; shift 1 more bit
             jmp         shift_bits
 chk_col_2:  cmp         bl, "3"
-            push        invalid_prmt
+            push        INVALID_PRMT
             jne         proc_turn           ; invalid input, so try again
             add         ecx, 2              ; shift 2 more bits
             ; now, ecx should have the number of bits to shift
@@ -308,18 +308,18 @@ shift_bits: mov         edx, 1              ; will left-shift 0b1 to get correct
             ; if occupied, print out a message
 x_pos_chk:  test        edx, [x_dat]
             jz          o_pos_chk
-            push        occupied_prmt
+            push        OCCUPIED_PRMT
             jmp         proc_turn
 o_pos_chk:  test        edx, [o_dat]
             jz          set_token
-            push        occupied_prmt
+            push        OCCUPIED_PRMT
             jmp         proc_turn
 
             ; set token on board
 set_token:  mov         eax, [ebp - 4]      ; eax = address of player data
             or          [eax], edx          ; set player data position bit
             xor         eax, eax            ; clear eax
-            mov         al, [b_00_offset + ecx] ; set al to offset value
+            mov         al, [B_00_OFFSET + ecx] ; set al to offset value
             mov         bl, [ebp - 8]       ; ebx = player token
             mov         [board + eax], bl   ; modify character at board + offset
 
@@ -334,8 +334,8 @@ end_input:  mov         esp, ebp
 ; INPUT:    None
 ;
 ; OUTPUT:   0 - no player has won
-;           x_win_val (1) - X won
-;           o_win_val (2) - O won
+;           X_WIN_VAL (1) - X won
+;           O_WIN_VAL (2) - O won
 ;
 ; PROCESS:  (1) Check x
 ;               ax - stores current x data
@@ -366,7 +366,7 @@ check_x:    mov         ax, [x_dat]         ; store current x data
             test        ax, win_min_d
             jz          x_win
             jmp         check_o
-x_win:      mov         eax, x_win_val
+x_win:      mov         eax, X_WIN_VAL
             jmp         return_status
 check_o:    ; see if o has a winning combination
             mov         ax, [o_dat]         ; store current o data
@@ -388,7 +388,7 @@ check_o:    ; see if o has a winning combination
             test        ax, win_min_d
             jz          o_win
             jmp         return_status
-o_win:      mov         eax, o_win_val      ; set return value
+o_win:      mov         eax, O_WIN_VAL      ; set return value
 return_status:
             ; eax has return value
             ret
@@ -411,8 +411,8 @@ check_again:
             ; print prompt
             mov         eax, SYS_WRITE
             mov         ebx, STDOUT
-            mov         ecx, again_prmt
-            mov         edx, again_prmt_len
+            mov         ecx, AGAIN_PRMT
+            mov         edx, AGAIN_PRMT_LEN
             int         LINUX_SYSCALL
 
             ; read input
