@@ -353,7 +353,7 @@ get_input:
             shr         bx, 7
             xor         al, ah          ; parity(ax) = parity(ah ^ al)
             xor         bl, bh          ; parity(bx) = parity(bh ^ bl)
-            add         al, bl          ; parity(al + bl) = player turn
+            xor         al, bl          ; parity(al + bl) = player turn
             jp          x_turn          ; even parity => X's turn
 o_turn:     mov         dword [ebp - 4], o_dat  ; address of player data
             push        o_prompt        ; odd parity => O's turn
