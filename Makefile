@@ -1,4 +1,4 @@
-NFLAGS=-f elf32 -g
+NFLAGS=-f elf32
 TARGET=tic-tac-toe
 
 all:
