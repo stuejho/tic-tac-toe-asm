@@ -554,7 +554,7 @@ return_status:
 ;               eax, ebx, ecx, edx - standard system call parameters
 ;           (3) Process input
 ;               eax - store return value
-;               edx - store input character
+;               dl - store input character
 check_again:
             ; print prompt
             mov         eax, SYS_WRITE
